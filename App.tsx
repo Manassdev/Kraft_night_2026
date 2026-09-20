@@ -1,38 +1,55 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect } from 'react';
+import { Linking, StatusBar, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { JourneyProvider } from './src/context/JourneyContext';
+import { AppNavigator } from './src/navigation/AppNavigator';
+import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { handleAuthUrl } from './src/services/auth';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+const MainApp: React.FC = () => {
+  const { isDark, theme } = useTheme();
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  useEffect(() => {
+    // Check if app was launched via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleAuthUrl(url).catch((err) => {
+          console.log('Initial URL auth error:', err);
+        });
+      }
+    });
 
+    // Listen for incoming deep link URLs while running
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      if (url) {
+        handleAuthUrl(url).catch((err) => {
+          console.log('Deep link auth error:', err);
+        });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <AppNavigator />
+    </View>
+  );
+};
+
+function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <ThemeProvider>
+        <JourneyProvider>
+          <MainApp />
+        </JourneyProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
   );
 }
 

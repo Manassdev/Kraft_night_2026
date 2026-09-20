@@ -73,3 +73,13 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Database & local secrets
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+__pycache__/
+*.pyc
+
