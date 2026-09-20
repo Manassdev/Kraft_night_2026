@@ -434,6 +434,107 @@ export const supabaseDb = {
       return false;
     }
   },
+
+  // --- Journey Views ---
+  recordJourneyView: async (journeyId: string, viewerId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('journey_views')
+        .upsert(
+          { journey_id: journeyId, viewer_id: viewerId, viewed_at: new Date().toISOString() },
+          { onConflict: 'journey_id,viewer_id' }
+        );
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
+  getJourneyViewers: async (journeyId: string): Promise<import('../types').JourneyView[] | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('journey_views')
+        .select('*, users!journey_views_viewer_id_fkey(name, verified)')
+        .eq('journey_id', journeyId)
+        .order('viewed_at', { ascending: false });
+
+      if (error || !data) return null;
+
+      return (data as any[]).map(row => ({
+        id: row.id,
+        journeyId: row.journey_id,
+        viewerId: row.viewer_id,
+        viewerName: row.users?.name || 'Traveler',
+        viewerVerified: row.users?.verified ?? false,
+        viewedAt: row.viewed_at,
+      }));
+    } catch {
+      return null;
+    }
+  },
+
+  // --- Journey Lifecycle ---
+  startJourney: async (journeyId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('journeys')
+        .update({ status: 'in_progress' })
+        .eq('id', journeyId);
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
+  getPublicJourneys: async (): Promise<import('../types').Journey[] | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('journeys')
+        .select('*, users(id, name, cooperation_score, verified, phone, profile_image), vehicle_details(*), items(*)')
+        .not('status', 'in', '("in_progress","active","completed","cancelled")')
+        .order('created_at', { ascending: false });
+
+      if (error || !data) return null;
+
+      return (data as any[]).map(row => ({
+        id: row.id,
+        userId: row.user_id,
+        userName: row.users?.name || 'Traveler',
+        userTrustScore: row.users?.cooperation_score ?? 70,
+        userVerified: row.users?.verified ?? true,
+        userGender: 'Male',
+        from: row.from_location,
+        to: row.to_location,
+        time: row.journey_time || '',
+        cooperationType: row.journey_type,
+        status: mapJourneyStatus(row.status),
+        notes: row.description,
+        companionPreference: undefined,
+        travelType: undefined,
+        meetingPoint: row.from_location ? `${row.from_location} Main Gate` : undefined,
+        vehicleDetails: row.vehicle_details?.[0]
+          ? {
+              vehicleType: mapVehicleType(row.vehicle_details[0].vehicle_type),
+              availableSeats: row.vehicle_details[0].available_seats || 1,
+              travelContribution: row.vehicle_details[0].travel_contribution || 0,
+              contribution: row.vehicle_details[0].travel_contribution || 0,
+            }
+          : undefined,
+        itemDetails: row.items?.[0]
+          ? {
+              item: row.items[0].description || '',
+              itemName: row.items[0].description || '',
+              description: row.items[0].description || '',
+              itemDescription: row.items[0].description || '',
+              suggestedTip: 0,
+              isPermitted: true,
+            }
+          : undefined,
+      }));
+    } catch {
+      return null;
+    }
+  },
 };
 
 // -----------------------------------------------------------------------------

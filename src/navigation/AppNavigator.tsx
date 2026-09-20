@@ -224,6 +224,7 @@ export const AppNavigator: React.FC = () => {
               paddingBottom: tabBarBottomInset,
             },
           ]}>
+          {/* Home Tab */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => handleTabPress('Home')}
@@ -231,16 +232,13 @@ export const AppNavigator: React.FC = () => {
             <Text style={[styles.tabIcon, { color: currentTab === 'Home' ? theme.primary : theme.textMuted }]}>
               🏠
             </Text>
-            <Text
-              style={[
-                styles.tabText,
-                { color: currentTab === 'Home' ? theme.primary : theme.textSecondary },
-                currentTab === 'Home' && styles.tabTextActive,
-              ]}>
+            <Text style={[styles.tabText, { color: currentTab === 'Home' ? theme.primary : theme.textSecondary }, currentTab === 'Home' && styles.tabTextActive]}>
               Home
             </Text>
+            {currentTab === 'Home' && <View style={[styles.activeDot, { backgroundColor: theme.primary }]} />}
           </TouchableOpacity>
 
+          {/* Explore Tab */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => handleTabPress('Explore')}
@@ -248,16 +246,24 @@ export const AppNavigator: React.FC = () => {
             <Text style={[styles.tabIcon, { color: currentTab === 'Explore' ? theme.primary : theme.textMuted }]}>
               🧭
             </Text>
-            <Text
-              style={[
-                styles.tabText,
-                { color: currentTab === 'Explore' ? theme.primary : theme.textSecondary },
-                currentTab === 'Explore' && styles.tabTextActive,
-              ]}>
+            <Text style={[styles.tabText, { color: currentTab === 'Explore' ? theme.primary : theme.textSecondary }, currentTab === 'Explore' && styles.tabTextActive]}>
               Explore
             </Text>
+            {currentTab === 'Explore' && <View style={[styles.activeDot, { backgroundColor: theme.primary }]} />}
           </TouchableOpacity>
 
+          {/* Center Create FAB */}
+          <View style={styles.createTabWrapper}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => navigate('CreateJourney', {})}
+              style={[styles.createFAB, { backgroundColor: theme.primary }]}>
+              <Text style={styles.createFABText}>+</Text>
+            </TouchableOpacity>
+            <Text style={[styles.createLabel, { color: theme.textSecondary }]}>Create</Text>
+          </View>
+
+          {/* Requests Tab */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => handleTabPress('Requests')}
@@ -272,16 +278,13 @@ export const AppNavigator: React.FC = () => {
                 </View>
               )}
             </View>
-            <Text
-              style={[
-                styles.tabText,
-                { color: currentTab === 'Requests' ? theme.primary : theme.textSecondary },
-                currentTab === 'Requests' && styles.tabTextActive,
-              ]}>
+            <Text style={[styles.tabText, { color: currentTab === 'Requests' ? theme.primary : theme.textSecondary }, currentTab === 'Requests' && styles.tabTextActive]}>
               Requests
             </Text>
+            {currentTab === 'Requests' && <View style={[styles.activeDot, { backgroundColor: theme.primary }]} />}
           </TouchableOpacity>
 
+          {/* Profile Tab */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => handleTabPress('Profile')}
@@ -289,22 +292,10 @@ export const AppNavigator: React.FC = () => {
             <Text style={[styles.tabIcon, { color: currentTab === 'Profile' ? theme.primary : theme.textMuted }]}>
               👤
             </Text>
-            <Text
-              style={[
-                styles.tabText,
-                { color: currentTab === 'Profile' ? theme.primary : theme.textSecondary },
-                currentTab === 'Profile' && styles.tabTextActive,
-              ]}>
+            <Text style={[styles.tabText, { color: currentTab === 'Profile' ? theme.primary : theme.textSecondary }, currentTab === 'Profile' && styles.tabTextActive]}>
               Profile
             </Text>
-          </TouchableOpacity>
-
-          {/* Instant Light/Dark Mode Switcher */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={toggleTheme}
-            style={[styles.themeToggleBtn, { backgroundColor: isDark ? '#1E324D' : '#F1F5F9' }]}>
-            <Text style={styles.themeToggleIcon}>{isDark ? '☀️' : '🌙'}</Text>
+            {currentTab === 'Profile' && <View style={[styles.activeDot, { backgroundColor: theme.primary }]} />}
           </TouchableOpacity>
         </View>
       )}
@@ -323,34 +314,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    paddingVertical: 6,
-    paddingBottom: 8,
-    paddingHorizontal: 8,
-    elevation: 8,
+    paddingTop: 8,
+    paddingBottom: 10,
+    paddingHorizontal: 4,
+    elevation: 12,
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 2,
+    position: 'relative',
   },
   iconWithBadge: {
     position: 'relative',
   },
   tabIcon: {
-    fontSize: 20,
+    fontSize: 22,
   },
   tabText: {
-    fontSize: Typography.fontSizes.xs,
-    fontWeight: Typography.fontWeights.medium,
-    marginTop: 2,
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 3,
+    letterSpacing: 0.1,
   },
   tabTextActive: {
-    fontWeight: Typography.fontWeights.bold,
+    fontWeight: '700',
+  },
+  activeDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 3,
+  },
+  createTabWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 72,
+  },
+  createFAB: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#00A884',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    marginTop: -18,
+  },
+  createFABText: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 32,
+    marginTop: -2,
+  },
+  createLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
   },
   badge: {
     position: 'absolute',
@@ -368,13 +397,5 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
   },
-  themeToggleBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: Radius.full,
-    marginLeft: 4,
-  },
-  themeToggleIcon: {
-    fontSize: 14,
-  },
 });
+

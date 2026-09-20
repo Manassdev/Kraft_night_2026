@@ -7,7 +7,8 @@ import {
   View,
 } from 'react-native';
 import { Button } from '../components/Button';
-import { Colors, Typography } from '../theme/theme';
+import { Typography } from '../theme/theme';
+import { useTheme } from '../theme/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -51,6 +52,7 @@ const SLIDES: OnboardingSlide[] = [
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const { theme, isDark } = useTheme();
 
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
@@ -68,13 +70,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
   const isLast = currentIndex === SLIDES.length - 1;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Top Header with Skip option */}
       <View style={styles.topHeader}>
         <View style={styles.headerSpacer} />
         {!isLast ? (
           <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={[styles.skipText, { color: theme.textSecondary }]}>Skip</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.headerSpacer} />
@@ -133,8 +135,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
 
       {/* Text Area */}
       <View style={styles.textArea}>
-        <Text style={styles.title}>{currentSlide.title}</Text>
-        <Text style={styles.subtitle}>{currentSlide.subtitle}</Text>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>{currentSlide.title}</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{currentSlide.subtitle}</Text>
       </View>
 
       {/* Bottom Area: Dots + Button */}
@@ -147,7 +149,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
               onPress={() => setCurrentIndex(i)}
               style={[
                 styles.dot,
-                currentIndex === i ? styles.dotActive : styles.dotInactive,
+                { backgroundColor: currentIndex === i ? '#00A884' : isDark ? '#334155' : '#CBD5E1' },
+                currentIndex === i && styles.dotActive,
               ]}
             />
           ))}
@@ -178,7 +181,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'space-between',
     paddingVertical: 16,
   },
@@ -198,7 +200,6 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: Typography.fontSizes.base,
-    color: Colors.textSecondary,
     fontWeight: Typography.fontWeights.semibold,
   },
   illustrationArea: {
@@ -284,14 +285,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: Typography.fontSizes.display,
     fontWeight: Typography.fontWeights.extrabold,
-    color: Colors.textPrimary,
     textAlign: 'center',
     lineHeight: 36,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: Typography.fontSizes.md,
-    color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 22,
@@ -316,7 +315,7 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 24,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#00A884',
   },
   dotInactive: {
     width: 8,
@@ -326,11 +325,11 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#00A884',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
-    shadowColor: Colors.primary,
+    shadowColor: '#00A884',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,

@@ -1,12 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { User as SupabaseAuthUser } from '@supabase/supabase-js';
 import { supabase, supabaseAuth, supabaseDb, supabaseRealtime } from '../services/supabase';
-import { sendMagicLink } from '../services/auth';
+import { sendOtp
+ } from '../services/auth';
 import { socketService } from '../services/socket';
 import {
   ActiveJourneySession,
   Journey,
   JourneyRequest,
+  JourneyView,
   Rating,
   TrustedConnection,
   User,
@@ -33,18 +35,37 @@ interface JourneyContextType {
   sendRequest: (journey: Journey, message?: string) => Promise<JourneyRequest | null>;
   acceptRequest: (requestId: string) => Promise<ActiveJourneySession | null>;
   rejectRequest: (requestId: string) => Promise<void>;
+  startJourney: (journeyId: string) => Promise<boolean>;
   completeActiveJourney: () => void;
   submitRating: (toUserId: string, stars: number, comment: string) => Promise<void>;
   toggleTrustedPerson: (targetUser: Partial<User>) => Promise<void>;
   isTrusted: (userId: string) => boolean;
   refreshData: () => Promise<void>;
+  recordView: (journeyId: string) => Promise<void>;
+  getJourneyViewers: (journeyId: string) => Promise<JourneyView[]>;
 }
 
 const JourneyContext = createContext<JourneyContextType | undefined>(undefined);
 
+// Demo user used when no Supabase session exists (hackathon demo path)
+const DEMO_USER: User = {
+  id: 'demo-user-001',
+  name: 'Demo User',
+  email: 'demo@cojourney.app',
+  gender: 'Male',
+  trustScore: 87,
+  verified: true,
+  completedJourneys: 12,
+  cooperationHistoryCount: 14,
+  ratingsAverage: 4.8,
+  ratingsCount: 10,
+  safetyScore: 10,
+  phone: '+91 9876543210',
+};
+
 export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<Record<string, User>>({});
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(DEMO_USER);
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [requests, setRequests] = useState<JourneyRequest[]>([]);
   const [activeJourney, setActiveJourney] = useState<ActiveJourneySession | null>(null);
@@ -242,13 +263,13 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     }
 
-    await sendMagicLink(email.trim(), name.trim(), phone?.trim(), gender);
+    await sendOtp(email.trim(), name.trim(), phone?.trim(), gender);
   };
 
   const logout = () => {
     supabaseAuth.signOut().catch(() => {});
     socketService.disconnect();
-    setCurrentUser(null);
+    setCurrentUser(DEMO_USER); // reset to demo user so app stays usable
   };
 
   const createJourney = async (data: Partial<Journey>): Promise<Journey | null> => {
@@ -349,6 +370,74 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
+  const startJourney = async (journeyId: string): Promise<boolean> => {
+    const success = await supabaseDb.startJourney(journeyId);
+    if (success) {
+      setJourneys(prev =>
+        prev.map(j => (j.id === journeyId ? { ...j, status: 'active' as const } : j))
+      );
+
+      // Build active session from existing accepted request for this journey
+      const acceptedReq = requests.find(
+        r => r.journeyId === journeyId && r.status === 'accepted'
+      );
+      const theJourney = journeys.find(j => j.id === journeyId);
+
+      if (theJourney && !activeJourney) {
+        const session: ActiveJourneySession = {
+          id: `active_${Date.now()}`,
+          journeyId,
+          from: theJourney.from,
+          to: theJourney.to,
+          time: theJourney.time,
+          cooperationType: theJourney.cooperationType,
+          meetingPoint: theJourney.meetingPoint || `${theJourney.from} Main Gate`,
+          status: 'in_progress',
+          startedAt: 'Just now',
+          participants: [
+            {
+              id: currentUser?.id || 'creator',
+              name: currentUser?.name || 'Creator',
+              trustScore: currentUser?.trustScore || 70,
+              verified: currentUser?.verified || true,
+              role: 'creator',
+            },
+            ...(acceptedReq
+              ? [{
+                  id: acceptedReq.senderId,
+                  name: acceptedReq.senderName,
+                  trustScore: acceptedReq.senderTrustScore,
+                  verified: acceptedReq.senderVerified,
+                  role: 'cooperator' as const,
+                }]
+              : []),
+          ],
+        };
+        setActiveJourney(session);
+
+        // Notify Socket.IO server so it can cache authorized participants in Redis.
+        // This prevents unauthorized users from joining the active journey room.
+        const participantIds = acceptedReq ? [acceptedReq.senderId] : [];
+        socketService.notifyJourneyStarted(
+          journeyId,
+          currentUser?.id || '',
+          participantIds
+        );
+      }
+    }
+    return success;
+  };
+
+  const recordView = async (journeyId: string): Promise<void> => {
+    if (!currentUser?.id) return;
+    await supabaseDb.recordJourneyView(journeyId, currentUser.id);
+  };
+
+  const getJourneyViewers = async (journeyId: string): Promise<JourneyView[]> => {
+    const viewers = await supabaseDb.getJourneyViewers(journeyId);
+    return viewers || [];
+  };
+
   const completeActiveJourney = () => {
     if (!activeJourney) return;
     setActiveJourney(prev => (prev ? { ...prev, status: 'completed' } : null));
@@ -435,11 +524,14 @@ export const JourneyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         sendRequest,
         acceptRequest,
         rejectRequest,
+        startJourney,
         completeActiveJourney,
         submitRating,
         toggleTrustedPerson,
         isTrusted,
         refreshData,
+        recordView,
+        getJourneyViewers,
       }}>
       {children}
     </JourneyContext.Provider>

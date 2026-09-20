@@ -42,9 +42,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     time: '',
   };
 
-  // Filter journeys matching destination search query if provided
   const visibleJourneys = journeys
     .filter(j => j.userId !== currentUser?.id)
+    .filter(j => j.status !== 'active' && (j.status as string) !== 'in_progress')
     .filter(j => {
       if (!destinationSearch.trim()) return true;
       const q = destinationSearch.toLowerCase();
@@ -73,20 +73,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       showsVerticalScrollIndicator={false}>
       {/* Top Greeting Header */}
       <View style={styles.header}>
-        <View style={styles.headerTextCol}>
+        <View style={[styles.greetingPrefix && styles.headerTextCol]}>
           <Text style={[styles.greetingPrefix, { color: theme.textSecondary }]}>{getTimeGreeting()},</Text>
           <Text style={[styles.greetingName, { color: theme.textPrimary }]}>
             {currentUser?.name || 'Traveler'} 👋
           </Text>
         </View>
 
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Profile')}
-          style={[styles.profileAvatar, { backgroundColor: isDark ? '#1C3147' : '#E6F7F4' }]}>
-          <Text style={[styles.profileAvatarText, { color: theme.primary }]}>
-            {(currentUser?.name || 'T').charAt(0)}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Notifications')}
+            style={[styles.iconBtn, { backgroundColor: isDark ? '#1C2E42' : '#F1F5F9' }]}>
+            <Text style={styles.iconBtnText}>🔔</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Profile')}
+            style={[styles.profileAvatar, { backgroundColor: isDark ? '#1C3147' : '#E6F7F4' }]}>
+            <Text style={[styles.profileAvatarText, { color: theme.primary }]}>
+              {(currentUser?.name || 'T').charAt(0)}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Active Journey Banner if ongoing */}
@@ -270,6 +277,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBtnText: {
+    fontSize: 16,
   },
   headerTextCol: {
     flex: 1,

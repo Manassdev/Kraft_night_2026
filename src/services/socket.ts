@@ -18,6 +18,16 @@ export interface SocketChatHistory {
   messages: SocketChatMessage[];
 }
 
+export interface SocketJourneyStarted {
+  journeyId: string;
+  ownerId: string;
+}
+
+export interface SocketJoinError {
+  journeyId: string;
+  message: string;
+}
+
 export const socketService = {
   connect(userId: string) {
     if (!userId) return;
@@ -81,6 +91,19 @@ export const socketService = {
     });
   },
 
+  /**
+   * Notify the server that a journey has become active.
+   * The server will cache the authorized participant list in Redis
+   * so that only the owner and accepted participants can join the room.
+   */
+  notifyJourneyStarted(journeyId: string, ownerId: string, participantIds: string[]) {
+    socket?.emit('journeyStarted', {
+      journeyId,
+      ownerId,
+      participantIds,
+    });
+  },
+
   onMessage(callback: (message: SocketChatMessage) => void) {
     socket?.on('newMessage', callback);
   },
@@ -93,9 +116,21 @@ export const socketService = {
     socket?.on('userOnline', callback);
   },
 
+  /** Listen for journeyStarted broadcast from server */
+  onJourneyStarted(callback: (data: SocketJourneyStarted) => void) {
+    socket?.on('journeyStarted', callback);
+  },
+
+  /** Listen for join authorization failure */
+  onJoinJourneyError(callback: (data: SocketJoinError) => void) {
+    socket?.on('joinJourneyError', callback);
+  },
+
   removeListeners() {
     socket?.off('newMessage');
     socket?.off('chatHistory');
     socket?.off('userOnline');
+    socket?.off('journeyStarted');
+    socket?.off('joinJourneyError');
   },
 };

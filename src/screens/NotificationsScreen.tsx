@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -26,6 +26,7 @@ interface NotificationItem {
   time: string;
   targetScreen?: string;
   targetParams?: any;
+  isUnread?: boolean;
 }
 
 export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
@@ -33,50 +34,75 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
 }) => {
   const { requests, currentUser } = useJourney();
   const { theme, isDark } = useTheme();
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   // Generate real notifications from actual requests and user status
   const notifications: NotificationItem[] = [];
 
   requests.forEach(r => {
-    // Incoming request notification
+    // Incoming request notification — pending ones are unread
     if (r.receiverId === currentUser?.id || r.receiverName === currentUser?.name) {
       if (r.status === 'pending') {
         notifications.push({
           id: `notif_req_${r.id}`,
           icon: '📬',
           title: 'New journey request',
-          subtitle: `${r.senderName} requested to join your ${r.journeyFrom} → ${r.journeyTo} journey.`,
+          subtitle: `${r.senderName} wants to join your ${r.journeyFrom} → ${r.journeyTo} journey.`,
           time: r.createdAt || 'Recently',
           targetScreen: 'Requests',
+          isUnread: true,
+        });
+      } else if (r.status === 'accepted') {
+        notifications.push({
+          id: `notif_acc_in_${r.id}`,
+          icon: '🤝',
+          title: 'Request accepted',
+          subtitle: `You accepted ${r.senderName}'s request for ${r.journeyFrom} → ${r.journeyTo}.`,
+          time: r.createdAt || 'Recently',
+          targetScreen: 'ActiveJourney',
         });
       }
     }
 
-    // Outgoing request notification
+    // Outgoing request notifications
     if (r.senderId === currentUser?.id || r.senderName === currentUser?.name) {
       if (r.status === 'accepted') {
         notifications.push({
           id: `notif_acc_${r.id}`,
-          icon: '✓',
+          icon: '✅',
           title: 'Your request was accepted!',
           subtitle: `${r.receiverName} accepted your request for ${r.journeyFrom} → ${r.journeyTo}.`,
           time: 'Recently',
           targetScreen: 'ActiveJourney',
+          isUnread: true,
+        });
+      } else if (r.status === 'rejected') {
+        notifications.push({
+          id: `notif_rej_${r.id}`,
+          icon: '❌',
+          title: 'Request declined',
+          subtitle: `${r.receiverName} declined your request for ${r.journeyFrom} → ${r.journeyTo}.`,
+          time: r.createdAt || 'Recently',
+          targetScreen: 'Explore',
         });
       }
     }
   });
 
   const handlePress = (item: NotificationItem) => {
+    // Mark as read
+    setReadIds(prev => new Set([...prev, item.id]));
     if (item.targetScreen) {
       navigation.navigate(item.targetScreen, item.targetParams);
     }
   };
 
+  const unreadCount = notifications.filter(n => n.isUnread && !readIds.has(n.id)).length;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header
-        title="Notifications"
+        title={unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications'}
         onBack={() => navigation.goBack()}
       />
 
@@ -94,23 +120,52 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
             </Text>
           </View>
         ) : (
-          notifications.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              activeOpacity={0.8}
-              onPress={() => handlePress(item)}
-              style={[styles.notifCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-              <View style={[styles.iconCircle, { backgroundColor: isDark ? '#142938' : '#E6F7F4' }]}>
-                <Text style={[styles.iconText, { color: theme.primary }]}>{item.icon}</Text>
-              </View>
+          notifications.map(item => {
+            const isRead = readIds.has(item.id) || !item.isUnread;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                activeOpacity={0.8}
+                onPress={() => handlePress(item)}
+                style={[
+                  styles.notifCard,
+                  {
+                    backgroundColor: isRead
+                      ? theme.card
+                      : isDark ? '#0A2520' : '#F0FDF9',
+                    borderColor: isRead ? theme.cardBorder : theme.primary + '44',
+                  },
+                ]}>
+                {/* Icon circle */}
+                <View style={[styles.iconCircle, { backgroundColor: isDark ? '#142938' : '#E6F7F4' }]}>
+                  <Text style={styles.iconText}>{item.icon}</Text>
+                </View>
 
-              <View style={styles.textCol}>
-                <Text style={[styles.notifTitle, { color: theme.textPrimary }]}>{item.title}</Text>
-                <Text style={[styles.notifSub, { color: theme.textSecondary }]}>{item.subtitle}</Text>
-                <Text style={[styles.notifTime, { color: theme.textMuted }]}>{item.time}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
+                {/* Text content */}
+                <View style={styles.textCol}>
+                  <View style={styles.titleRow}>
+                    <Text style={[styles.notifTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    {!isRead && (
+                      <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
+                    )}
+                  </View>
+                  <Text style={[styles.notifSub, { color: theme.textSecondary }]} numberOfLines={2}>
+                    {item.subtitle}
+                  </Text>
+                  <Text style={[styles.notifTime, { color: theme.textMuted }]}>
+                    {item.time}
+                  </Text>
+                </View>
+
+                {/* Right chevron */}
+                {item.targetScreen && (
+                  <Text style={[styles.chevron, { color: theme.textMuted }]}>›</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -150,10 +205,12 @@ const styles = StyleSheet.create({
   notifCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 10,
+    gap: 12,
   },
   iconCircle: {
     width: 44,
@@ -161,18 +218,30 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    flexShrink: 0,
   },
   iconText: {
-    fontSize: Typography.fontSizes.base,
+    fontSize: 20,
   },
   textCol: {
     flex: 1,
   },
-  notifTitle: {
-    fontSize: Typography.fontSizes.sm + 0.5,
-    fontWeight: Typography.fontWeights.bold,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 3,
+  },
+  notifTitle: {
+    fontSize: Typography.fontSizes.sm,
+    fontWeight: Typography.fontWeights.bold,
+    flex: 1,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    flexShrink: 0,
   },
   notifSub: {
     fontSize: Typography.fontSizes.xs,
@@ -181,5 +250,10 @@ const styles = StyleSheet.create({
   },
   notifTime: {
     fontSize: 10,
+  },
+  chevron: {
+    fontSize: 20,
+    fontWeight: '700',
+    flexShrink: 0,
   },
 });

@@ -35,8 +35,15 @@ export const MatchingScreen: React.FC<MatchingScreenProps> = ({
     journeys.find(j => j.userId === currentUser?.id) ||
     journeys[0];
 
+  // Only match against public (non-active) journeys; exclude own journeys
+  const publicJourneys = journeys.filter(
+    j => j.userId !== currentUser?.id &&
+         j.status !== 'active' &&
+         (j.status as string) !== 'in_progress'
+  );
+
   const matches: MatchResult[] = targetJourney
-    ? findJourneyMatches(targetJourney, journeys, currentUser || undefined)
+    ? findJourneyMatches(targetJourney, publicJourneys, currentUser || undefined)
     : [];
 
   const bestMatch: MatchResult | null = matches[0] || null;

@@ -146,3 +146,12 @@ export interface TrustScoreBreakdown {
   total: number; // max 100
   label: 'Verified' | 'Trusted' | 'New user';
 }
+
+export interface JourneyView {
+  id: string;
+  journeyId: string;
+  viewerId: string;
+  viewerName: string;
+  viewerVerified: boolean;
+  viewedAt: string;
+}

@@ -14,6 +14,8 @@ import { Header } from '../components/Header';
 import { Input } from '../components/Input';
 import { JourneyCard } from '../components/JourneyCard';
 import { useJourney } from '../context/JourneyContext';
+import { useTheme } from '../theme/ThemeContext';
+import { Radius } from '../theme/theme';
 import { ItemSize } from '../types';
 
 interface CarryItemScreenProps {
@@ -25,6 +27,7 @@ interface CarryItemScreenProps {
 
 export const CarryItemScreen: React.FC<CarryItemScreenProps> = ({ navigation }) => {
   const { journeys, createJourney } = useJourney();
+  const { theme, isDark } = useTheme();
   const [showPostForm, setShowPostForm] = useState(false);
 
   // Form state
@@ -74,7 +77,7 @@ export const CarryItemScreen: React.FC<CarryItemScreenProps> = ({ navigation }) 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}>
+      style={[styles.container, { backgroundColor: theme.background }]}>
       <Header
         title="Carry Along Hub"
         subtitle="Deliver small permitted items along existing journeys"
@@ -114,8 +117,8 @@ export const CarryItemScreen: React.FC<CarryItemScreenProps> = ({ navigation }) 
 
         {/* Post Form (if active) */}
         {showPostForm && (
-          <View style={styles.formCard}>
-            <Text style={styles.formHeader}>Post a Carry Along Request</Text>
+          <View style={[styles.formCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <Text style={[styles.formHeader, { color: theme.textPrimary }]}>Post a Carry Along Request</Text>
 
             <Input
               label="Pickup From"
@@ -145,14 +148,22 @@ export const CarryItemScreen: React.FC<CarryItemScreenProps> = ({ navigation }) 
               onChangeText={setDescription}
             />
 
-            <Text style={styles.fieldLabel}>Package Size</Text>
+            <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Package Size</Text>
             <View style={styles.chipsRow}>
               {(['Small Envelope', 'Book / Document', 'Pocket Parcel', 'Medium Box'] as ItemSize[]).map(sz => (
                 <TouchableOpacity
                   key={sz}
                   onPress={() => setSize(sz)}
-                  style={[styles.chip, size === sz && styles.chipActive]}>
-                  <Text style={[styles.chipText, size === sz && styles.chipTextActive]}>
+                  style={[
+                    styles.chip,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                    size === sz && { backgroundColor: theme.primary + '20', borderColor: theme.primary },
+                  ]}>
+                  <Text style={[
+                    styles.chipText,
+                    { color: theme.textSecondary },
+                    size === sz && { color: theme.primary, fontWeight: '700' },
+                  ]}>
                     {sz}
                   </Text>
                 </TouchableOpacity>
@@ -171,10 +182,10 @@ export const CarryItemScreen: React.FC<CarryItemScreenProps> = ({ navigation }) 
             <TouchableOpacity
               onPress={() => setIsPermitted(!isPermitted)}
               style={styles.checkboxRow}>
-              <View style={[styles.checkbox, isPermitted && styles.checkboxActive]}>
+              <View style={[styles.checkbox, { borderColor: theme.border }, isPermitted && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
                 {isPermitted && <Text style={styles.checkText}>✓</Text>}
               </View>
-              <Text style={styles.checkboxLabel}>
+              <Text style={[styles.checkboxLabel, { color: theme.textSecondary }]}>
                 I confirm this is a permitted, safe personal item.
               </Text>
             </TouchableOpacity>
@@ -190,11 +201,11 @@ export const CarryItemScreen: React.FC<CarryItemScreenProps> = ({ navigation }) 
         )}
 
         {/* Active Carry Along Listings */}
-        <Text style={styles.feedHeader}>Available Carry Along Journeys</Text>
+        <Text style={[styles.feedHeader, { color: theme.textPrimary }]}>Available Carry Along Journeys</Text>
         {carryJourneys.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📦</Text>
-            <Text style={styles.emptyText}>No carry requests right now</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No carry requests right now</Text>
           </View>
         ) : (
           carryJourneys.map(journey => (
@@ -215,7 +226,6 @@ export const CarryItemScreen: React.FC<CarryItemScreenProps> = ({ navigation }) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   content: {
     padding: 16,

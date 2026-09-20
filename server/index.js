@@ -4,6 +4,13 @@ const { createClient } = require('redis');
 
 const PORT = process.env.PORT || 3000;
 
+process.on('uncaughtException', (err) => {
+  console.error('[Server] Uncaught Exception:', err?.message || err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Server] Unhandled Rejection:', reason);
+});
+
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ status: 'ok', service: 'CoJourney Realtime Server' }));
@@ -36,6 +43,63 @@ async function initRedis() {
 
 initRedis();
 
+/**
+ * Check if a user is authorized to access an active journey room.
+ * Authorization: user must be the journey owner OR an accepted participant.
+ * For non-active journeys (open/scheduled), any user may join for chat.
+ *
+ * We use Redis cache first, then fall back to permissive mode if unavailable.
+ * @param {string} journeyId
+ * @param {string} userId
+ * @returns {Promise<boolean>}
+ */
+async function isAuthorizedForJourneyRoom(journeyId, userId) {
+  if (!journeyId || !userId) return false;
+
+  try {
+    // Check Redis cache: journey_status:<journeyId>
+    if (redis.isOpen) {
+      const cachedStatus = await redis.get(`journey_status:${journeyId}`);
+
+      // If cached as active, verify user is in authorized set
+      if (cachedStatus === 'in_progress' || cachedStatus === 'active') {
+        const isAuth = await redis.sIsMember(`journey_participants:${journeyId}`, userId);
+        return isAuth;
+      }
+
+      // Not active — allow anyone (open/scheduled journeys support chat preview)
+      return true;
+    }
+  } catch (e) {
+    console.warn('[Auth] Redis check failed, defaulting to permissive:', e.message);
+  }
+
+  // Fallback: allow access (don't block if Redis is down)
+  return true;
+}
+
+/**
+ * When a journey becomes active, store its status and participant list in Redis.
+ * Called via a server event emitted from the app when journey starts.
+ */
+async function cacheJourneyAuthorization(journeyId, ownerId, participantIds) {
+  if (!redis.isOpen) return;
+  try {
+    const allAuthorized = [ownerId, ...participantIds].filter(Boolean);
+    await redis.set(`journey_status:${journeyId}`, 'in_progress');
+    // Store authorized user set
+    if (allAuthorized.length > 0) {
+      await redis.del(`journey_participants:${journeyId}`);
+      await redis.sAdd(`journey_participants:${journeyId}`, allAuthorized);
+      await redis.expire(`journey_participants:${journeyId}`, 86400); // 24h TTL
+      await redis.expire(`journey_status:${journeyId}`, 86400);
+    }
+    console.log(`[Auth] Journey ${journeyId} marked active, authorized users: ${allAuthorized.join(', ')}`);
+  } catch (e) {
+    console.error('[Auth] Failed to cache journey authorization:', e.message);
+  }
+}
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   let currentUserId = null;
@@ -59,12 +123,31 @@ io.on('connection', (socket) => {
     io.emit('userOnline', { userId });
   });
 
-  // Join journey room
+  // App notifies server when a journey starts (to cache authorization)
+  socket.on('journeyStarted', async ({ journeyId, ownerId, participantIds }) => {
+    console.log(`[Socket] Journey started: ${journeyId}, owner: ${ownerId}`);
+    await cacheJourneyAuthorization(journeyId, ownerId, participantIds || []);
+  });
+
+  // Join journey room — with authorization check for active journeys
   socket.on('joinJourney', async ({ journeyId, userId }) => {
     if (!journeyId) return;
     const room = `journey:${journeyId}`;
+    const uid = userId || currentUserId;
+
+    // Authorization check
+    const authorized = await isAuthorizedForJourneyRoom(journeyId, uid);
+    if (!authorized) {
+      console.warn(`[Socket] UNAUTHORIZED: User ${uid} blocked from room ${room}`);
+      socket.emit('joinJourneyError', {
+        journeyId,
+        message: 'This journey is active and you are not a participant.',
+      });
+      return;
+    }
+
     socket.join(room);
-    console.log(`[Socket] User ${userId || socket.id} joined room ${room}`);
+    console.log(`[Socket] User ${uid || socket.id} joined room ${room}`);
 
     // Send chat history if cached in Redis
     try {

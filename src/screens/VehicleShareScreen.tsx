@@ -13,6 +13,7 @@ import { Header } from '../components/Header';
 import { Input } from '../components/Input';
 import { JourneyCard } from '../components/JourneyCard';
 import { useJourney } from '../context/JourneyContext';
+import { useTheme } from '../theme/ThemeContext';
 import { VehicleType } from '../types';
 
 interface VehicleShareScreenProps {
@@ -24,6 +25,7 @@ interface VehicleShareScreenProps {
 
 export const VehicleShareScreen: React.FC<VehicleShareScreenProps> = ({ navigation }) => {
   const { journeys, createJourney } = useJourney();
+  const { theme } = useTheme();
   const [showPostForm, setShowPostForm] = useState(false);
 
   // Form State
@@ -60,7 +62,7 @@ export const VehicleShareScreen: React.FC<VehicleShareScreenProps> = ({ navigati
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}>
+      style={[styles.container, { backgroundColor: theme.background }]}>
       <Header
         title="Share Vehicle"
         subtitle="Offer empty seats on your scheduled trip"
@@ -93,8 +95,8 @@ export const VehicleShareScreen: React.FC<VehicleShareScreenProps> = ({ navigati
 
         {/* Post Form */}
         {showPostForm && (
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Offer Seats on Your Route</Text>
+          <View style={[styles.formCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <Text style={[styles.formTitle, { color: theme.textPrimary }]}>Offer Seats on Your Route</Text>
 
             <Input
               label="Starting From"
@@ -117,15 +119,23 @@ export const VehicleShareScreen: React.FC<VehicleShareScreenProps> = ({ navigati
               onChangeText={setTime}
             />
 
-            <Text style={styles.fieldLabel}>Vehicle Type</Text>
+            <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Vehicle Type</Text>
             <View style={styles.chipsRow}>
               {(['Car', 'Two-wheeler', 'Auto'] as VehicleType[]).map(vt => (
                 <TouchableOpacity
                   key={vt}
                   onPress={() => setVehicleType(vt)}
-                  style={[styles.chip, vehicleType === vt && styles.chipActive]}>
+                  style={[
+                    styles.chip,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                    vehicleType === vt && { backgroundColor: theme.primary + '20', borderColor: theme.primary },
+                  ]}>
                   <Text
-                    style={[styles.chipText, vehicleType === vt && styles.chipTextActive]}>
+                    style={[
+                      styles.chipText,
+                      { color: theme.textSecondary },
+                      vehicleType === vt && { color: theme.primary, fontWeight: '700' },
+                    ]}>
                     {vt}
                   </Text>
                 </TouchableOpacity>
@@ -160,7 +170,7 @@ export const VehicleShareScreen: React.FC<VehicleShareScreenProps> = ({ navigati
         )}
 
         {/* Available Vehicle Shares Feed */}
-        <Text style={styles.feedHeader}>Available Vehicle Shares</Text>
+        <Text style={[styles.feedHeader, { color: theme.textPrimary }]}>Available Vehicle Shares</Text>
         {vehicleJourneys.map(journey => (
           <JourneyCard
             key={journey.id}
@@ -178,7 +188,6 @@ export const VehicleShareScreen: React.FC<VehicleShareScreenProps> = ({ navigati
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   content: {
     padding: 16,

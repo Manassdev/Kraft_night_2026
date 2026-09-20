@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   ViewStyle,
 } from 'react-native';
-
-import { Colors, Radius, Typography } from '../theme/theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Radius, Typography } from '../theme/theme';
 
 interface ButtonProps {
   title: string;
@@ -34,6 +34,45 @@ export const Button: React.FC<ButtonProps> = ({
   textStyle,
   icon,
 }) => {
+  const { theme, isDark } = useTheme();
+
+  const getBg = () => {
+    if (disabled) return isDark ? '#1E293B' : '#E2E8F0';
+    switch (variant) {
+      case 'primary':  return theme.primary;
+      case 'secondary': return isDark ? '#1C3147' : theme.primaryLight || '#E6F7F4';
+      case 'outline':  return 'transparent';
+      case 'danger':   return theme.danger;
+      case 'success':  return theme.success;
+      default:         return theme.primary;
+    }
+  };
+
+  const getBorder = () => {
+    if (disabled) return isDark ? '#2D3748' : '#CBD5E1';
+    if (variant === 'outline') return theme.primary;
+    if (variant === 'secondary') return isDark ? '#1E4060' : '#B2EBF2';
+    return 'transparent';
+  };
+
+  const getTextColor = () => {
+    if (disabled) return theme.textMuted;
+    switch (variant) {
+      case 'outline':   return theme.primary;
+      case 'secondary': return isDark ? theme.primary : '#0D6E5B';
+      default:          return '#FFFFFF';
+    }
+  };
+
+  const paddingV = size === 'small' ? 8 : size === 'large' ? 15 : 13;
+  const paddingH = size === 'small' ? 14 : size === 'large' ? 24 : 18;
+  const minH     = size === 'small' ? 38  : size === 'large' ? 52  : 48;
+  const fontSize = size === 'small'
+    ? Typography.fontSizes.sm
+    : size === 'large'
+    ? Typography.fontSizes.md + 1
+    : Typography.fontSizes.base + 1;
+
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -41,23 +80,35 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       style={[
         styles.base,
-        styles[variant],
-        styles[`size_${size}`],
-        disabled && styles.disabled,
+        {
+          backgroundColor: getBg(),
+          borderColor: getBorder(),
+          borderWidth: variant === 'outline' || variant === 'secondary' ? 1.5 : 0,
+          paddingVertical: paddingV,
+          paddingHorizontal: paddingH,
+          minHeight: minH,
+          elevation: disabled ? 0 : variant === 'primary' ? 3 : variant === 'danger' ? 2 : 0,
+          shadowColor: variant === 'primary' ? theme.primary : '#000',
+          shadowOpacity: disabled ? 0 : variant === 'primary' ? 0.22 : 0,
+          shadowOffset: { width: 0, height: 2 },
+          shadowRadius: 6,
+        },
         style,
       ]}>
       {loading ? (
         <ActivityIndicator
-          color={variant === 'outline' ? Colors.primary : Colors.textWhite}
+          color={variant === 'outline' ? theme.primary : '#FFFFFF'}
           size="small"
         />
       ) : (
         <Text
           style={[
             styles.textBase,
-            styles[`text_${variant}`],
-            styles[`textSize_${size}`],
-            disabled && styles.textDisabled,
+            {
+              color: getTextColor(),
+              fontSize,
+              fontWeight: size === 'large' ? Typography.fontWeights.bold : Typography.fontWeights.semibold,
+            },
             textStyle,
           ]}>
           {icon ? `${icon} ` : ''}
@@ -75,82 +126,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  primary: {
-    backgroundColor: Colors.primary,
-    elevation: 2,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-  },
-  secondary: {
-    backgroundColor: Colors.primaryLight,
-    borderWidth: 1,
-    borderColor: '#B2EBF2',
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-  },
-  danger: {
-    backgroundColor: Colors.danger,
-  },
-  success: {
-    backgroundColor: Colors.success,
-  },
-  disabled: {
-    backgroundColor: Colors.border,
-    borderColor: Colors.borderLight,
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  size_small: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    minHeight: 38,
-  },
-  size_medium: {
-    paddingVertical: 13,
-    paddingHorizontal: 18,
-    minHeight: 48,
-  },
-  size_large: {
-    paddingVertical: 15,
-    paddingHorizontal: 24,
-    minHeight: 52,
-  },
   textBase: {
-    fontWeight: Typography.fontWeights.semibold,
     textAlign: 'center',
     letterSpacing: 0.2,
-  },
-  text_primary: {
-    color: Colors.textWhite,
-  },
-  text_secondary: {
-    color: Colors.primaryDark,
-  },
-  text_outline: {
-    color: Colors.primary,
-  },
-  text_danger: {
-    color: Colors.textWhite,
-  },
-  text_success: {
-    color: Colors.textWhite,
-  },
-  textDisabled: {
-    color: Colors.textMuted,
-  },
-  textSize_small: {
-    fontSize: Typography.fontSizes.sm,
-  },
-  textSize_medium: {
-    fontSize: Typography.fontSizes.base + 1,
-  },
-  textSize_large: {
-    fontSize: Typography.fontSizes.md + 1,
-    fontWeight: Typography.fontWeights.bold,
   },
 });

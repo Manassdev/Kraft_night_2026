@@ -22,14 +22,23 @@ interface RequestsScreenProps {
 export const RequestsScreen: React.FC<RequestsScreenProps> = ({ navigation }) => {
   const { requests, currentUser, acceptRequest, rejectRequest } = useJourney();
   const { theme, isDark } = useTheme();
-  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing'>('incoming');
+  const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'history'>('incoming');
 
   const incomingRequests = requests.filter(
-    r => r.receiverId === currentUser?.id || r.receiverName === currentUser?.name
+    r => (r.receiverId === currentUser?.id || r.receiverName === currentUser?.name)
+      && r.status === 'pending'
   );
 
   const outgoingRequests = requests.filter(
-    r => r.senderId === currentUser?.id || r.senderName === currentUser?.name
+    r => (r.senderId === currentUser?.id || r.senderName === currentUser?.name)
+      && r.status === 'pending'
+  );
+
+  // History: all resolved requests (accepted/rejected/completed)
+  const historyRequests = requests.filter(
+    r => (r.receiverId === currentUser?.id || r.receiverName === currentUser?.name ||
+          r.senderId === currentUser?.id || r.senderName === currentUser?.name)
+      && r.status !== 'pending'
   );
 
   const handleAccept = async (reqId: string) => {
@@ -59,40 +68,33 @@ export const RequestsScreen: React.FC<RequestsScreenProps> = ({ navigation }) =>
         onBack={() => navigation.goBack()}
       />
 
-      {/* Pill Segmented Switch matching Reference Screen 16 */}
+      {/* 3-Tab Segmented Control: Incoming | Sent | History */}
       <View style={styles.segmentContainer}>
         <View style={[styles.segmentPillBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveTab('incoming')}
-            style={[
-              styles.segmentPill,
-              activeTab === 'incoming' && [styles.segmentPillActive, { backgroundColor: theme.primary }],
-            ]}>
-            <Text
-              style={[
-                styles.segmentText,
-                { color: theme.textSecondary },
-                activeTab === 'incoming' && styles.segmentTextActive,
-              ]}>
-              Incoming ({incomingRequests.length})
+            style={[styles.segmentPill, activeTab === 'incoming' && [styles.segmentPillActive, { backgroundColor: theme.primary }]]}>
+            <Text style={[styles.segmentText, { color: theme.textSecondary }, activeTab === 'incoming' && styles.segmentTextActive]}>
+              Incoming {incomingRequests.length > 0 ? `(${incomingRequests.length})` : ''}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setActiveTab('outgoing')}
-            style={[
-              styles.segmentPill,
-              activeTab === 'outgoing' && [styles.segmentPillActive, { backgroundColor: theme.primary }],
-            ]}>
-            <Text
-              style={[
-                styles.segmentText,
-                { color: theme.textSecondary },
-                activeTab === 'outgoing' && styles.segmentTextActive,
-              ]}>
-              Outgoing ({outgoingRequests.length})
+            style={[styles.segmentPill, activeTab === 'outgoing' && [styles.segmentPillActive, { backgroundColor: theme.primary }]]}>
+            <Text style={[styles.segmentText, { color: theme.textSecondary }, activeTab === 'outgoing' && styles.segmentTextActive]}>
+              Sent {outgoingRequests.length > 0 ? `(${outgoingRequests.length})` : ''}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setActiveTab('history')}
+            style={[styles.segmentPill, activeTab === 'history' && [styles.segmentPillActive, { backgroundColor: theme.primary }]]}>
+            <Text style={[styles.segmentText, { color: theme.textSecondary }, activeTab === 'history' && styles.segmentTextActive]}>
+              History
             </Text>
           </TouchableOpacity>
         </View>
@@ -226,7 +228,59 @@ export const RequestsScreen: React.FC<RequestsScreenProps> = ({ navigation }) =>
           </View>
         )}
 
-        {/* Journey Status Legend matching Reference Screen 16 */}
+        {/* HISTORY TAB */}
+        {activeTab === 'history' && (
+          <View style={styles.section}>
+            {historyRequests.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyIcon}>📋</Text>
+                <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No history yet</Text>
+                <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                  Accepted, rejected, and completed requests will appear here.
+                </Text>
+              </View>
+            ) : (
+              historyRequests.map(req => {
+                const isIncoming = req.receiverId === currentUser?.id || req.receiverName === currentUser?.name;
+                const otherName = isIncoming ? req.senderName : req.receiverName;
+                const statusColor = req.status === 'accepted' ? theme.success
+                  : req.status === 'rejected' ? theme.danger
+                  : theme.textSecondary;
+                const statusEmoji = req.status === 'accepted' ? '🟢'
+                  : req.status === 'rejected' ? '🔴'
+                  : '⚪';
+                return (
+                  <View key={req.id} style={[styles.requestCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+                    <View style={styles.cardHeader}>
+                      <View style={[styles.avatar, { backgroundColor: isDark ? '#1C3147' : '#E6F7F4' }]}>
+                        <Text style={[styles.avatarText, { color: theme.primary }]}>{otherName.charAt(0)}</Text>
+                      </View>
+                      <View style={styles.requestInfo}>
+                        <Text style={[styles.requestTitleText, { color: theme.textPrimary }]}>
+                          <Text style={[styles.senderNameBold, { color: theme.textPrimary }]}>{otherName}</Text>
+                          {' '}{isIncoming ? '→ you' : '← you'}{'\n'}
+                          <Text style={[styles.routeHighlight, { color: theme.primary }]}>
+                            {req.journeyFrom} → {req.journeyTo}
+                          </Text>
+                        </Text>
+                        <View style={styles.senderMetaRow}>
+                          <Text style={[styles.resolvedStatusText, { color: statusColor }]}>
+                            {statusEmoji} {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                          </Text>
+                          <Text style={[styles.requestTimeText, { color: theme.textMuted }]}>
+                            • {req.journeyTime}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+        )}
+
+        {/* Journey Status Legend */}
         <View style={[styles.legendCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.legendTitle, { color: theme.textPrimary }]}>Journey Status</Text>
           <View style={styles.legendItem}>

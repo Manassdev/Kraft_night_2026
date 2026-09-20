@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,70 +11,43 @@ import {
 import { Button } from '../components/Button';
 import { CoJourneyLogo } from '../components/CoJourneyLogo';
 import { Input } from '../components/Input';
-import { useJourney } from '../context/JourneyContext';
 import { useTheme } from '../theme/ThemeContext';
 import { Radius, Typography } from '../theme/theme';
+
 interface LoginScreenProps {
   navigation: {
     navigate: (screen: string, params?: any) => void;
   };
 }
+
+const DEMO_EMAIL = 'demo@cojourney.app';
+const DEMO_PASSWORD = 'demo123';
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { login } = useJourney();
   const { theme, isDark } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [usePasswordLogin, setUsePasswordLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
-  const handleMagicLinkLogin = async () => {
+  const handleSignIn = () => {
     if (!email.trim()) {
-      setError('Please enter your email address');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      await login(email.trim());
-      setMagicLinkSent(true);
-      Alert.alert(
-        'Magic Link Sent',
-        `A secure login link has been sent to ${email.trim()}. Tap the link in your email to open CoJourney and log in.`,
-        [{ text: 'OK' }]
-      );
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unable to send magic link. Please check your email.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordLogin = async () => {
-    if (!email.trim()) {
-      setError('Please enter your email address');
+      setError('Please enter your email');
       return;
     }
     if (!password) {
       setError('Please enter your password');
       return;
     }
-    setLoading(true);
     setError('');
-    try {
-      const success = await login(email.trim(), undefined, password);
-      if (success) {
-        navigation.navigate('Home');
-      } else {
-        setError('Invalid credentials. Please check and try again.');
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Connection error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    navigation.navigate('Home');
+  };
+
+  const handleDemoLogin = () => {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    setError('');
+    navigation.navigate('Home');
   };
 
   return (
@@ -86,16 +58,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-        {/* Top Logo */}
+
+        {/* Logo */}
         <View style={styles.logoWrapper}>
           <CoJourneyLogo size="medium" showText={true} dark={isDark} />
         </View>
 
-        {/* Header Titles */}
+        {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.textPrimary }]}>Welcome back 👋</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Login to your CoJourney account
+            Sign in to your CoJourney account
           </Text>
         </View>
 
@@ -106,78 +79,63 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             leftIcon="✉️"
             placeholder="you@example.com"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={text => { setEmail(text); setError(''); }}
             autoCapitalize="none"
             keyboardType="email-address"
           />
 
-          {usePasswordLogin && (
-            <Input
-              label="Password"
-              leftIcon="🔒"
-              rightIcon={showPassword ? '👁️' : '👁️‍🗨️'}
-              onRightIconPress={() => setShowPassword(!showPassword)}
-              placeholder="••••••••"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-            />
-          )}
+          <Input
+            label="Password"
+            leftIcon="🔒"
+            rightIcon={showPassword ? '👁️' : '👁️‍🗨️'}
+            onRightIconPress={() => setShowPassword(v => !v)}
+            placeholder="••••••••"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={text => { setPassword(text); setError(''); }}
+          />
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
 
-          {magicLinkSent && (
-            <View style={[styles.successBox, { backgroundColor: isDark ? '#064E3B' : '#DCFCE7' }]}>
-              <Text style={[styles.successText, { color: isDark ? '#34D399' : '#15803D' }]}>
-                ✓ Magic Link sent! Open the email on this device to continue.
-              </Text>
-            </View>
-          )}
+          {/* Sign In */}
+          <Button
+            title="Sign In"
+            onPress={handleSignIn}
+            variant="primary"
+            size="large"
+            style={styles.signInBtn}
+          />
 
-          {/* Primary Action Button */}
-          {usePasswordLogin ? (
-            <Button
-              title={loading ? 'Logging in...' : 'Login with Password'}
-              onPress={handlePasswordLogin}
-              variant="primary"
-              size="large"
-              disabled={loading}
-              style={styles.loginBtn}
-            />
-          ) : (
-            <Button
-              title={loading ? 'Sending Magic Link...' : 'Send Magic Link'}
-              onPress={handleMagicLinkLogin}
-              variant="primary"
-              size="large"
-              disabled={loading}
-              style={styles.loginBtn}
-            />
-          )}
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            <Text style={[styles.dividerLabel, { color: theme.textMuted }]}>or</Text>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          </View>
 
-          {/* Toggle Password Login */}
-        <TouchableOpacity
-  onPress={() => navigation.navigate('Home')}
-  style={{
-    marginTop: 16,
-    padding: 15,
-    borderRadius: 10,
-    backgroundColor: '#E5E7EB',
-    alignItems: 'center',
-  }}
->
-  <Text style={{ color: '#111827', fontWeight: '600' }}>
-    Continue with Demo Account
-  </Text>
-</TouchableOpacity>
+          {/* Demo User */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleDemoLogin}
+            style={[
+              styles.demoBtn,
+              { backgroundColor: isDark ? '#1C2E42' : '#F0FDF9', borderColor: theme.primary + '55' },
+            ]}>
+            <Text style={[styles.demoBtnTitle, { color: theme.primary }]}>🚀 Demo User</Text>
+            <Text style={[styles.demoBtnSub, { color: theme.textSecondary }]}>
+              {DEMO_EMAIL} · {DEMO_PASSWORD}
+            </Text>
+          </TouchableOpacity>
 
-          {/* Footer - Create account */}
+          {/* Footer */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: theme.textSecondary }]}>
               Don't have an account?{' '}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={[styles.createAccountText, { color: theme.primary }]}>Create account</Text>
+              <Text style={[styles.registerLink, { color: theme.primary }]}>Sign up</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -223,29 +181,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: Typography.fontWeights.medium,
   },
-  successBox: {
-    padding: 12,
-    borderRadius: Radius.md,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  successText: {
-    fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.semibold,
-    textAlign: 'center',
-  },
-  loginBtn: {
+  signInBtn: {
     marginTop: 6,
-    marginBottom: 14,
+    marginBottom: 20,
   },
-  toggleAuthMode: {
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerLabel: {
+    fontSize: Typography.fontSizes.xs,
+  },
+  demoBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: Radius.lg,
+    borderWidth: 1.5,
     alignItems: 'center',
     marginBottom: 24,
-    paddingVertical: 6,
   },
-  toggleAuthModeText: {
-    fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.semibold,
+  demoBtnTitle: {
+    fontSize: Typography.fontSizes.md,
+    fontWeight: Typography.fontWeights.bold,
+    marginBottom: 2,
+  },
+  demoBtnSub: {
+    fontSize: Typography.fontSizes.xs,
   },
   footer: {
     flexDirection: 'row',
@@ -255,7 +222,7 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: Typography.fontSizes.base,
   },
-  createAccountText: {
+  registerLink: {
     fontSize: Typography.fontSizes.base,
     fontWeight: Typography.fontWeights.bold,
   },

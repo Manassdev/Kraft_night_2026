@@ -13,7 +13,7 @@ const MainApp: React.FC = () => {
     // Check if app was launched via deep link
     Linking.getInitialURL().then((url) => {
       if (url) {
-        handleAuthUrl(url).catch((err) => {
+        handleAuthUrl(url).catch((err: unknown) => {
           console.log('Initial URL auth error:', err);
         });
       }
@@ -22,7 +22,7 @@ const MainApp: React.FC = () => {
     // Listen for incoming deep link URLs while running
     const subscription = Linking.addEventListener('url', ({ url }) => {
       if (url) {
-        handleAuthUrl(url).catch((err) => {
+        handleAuthUrl(url).catch((err: unknown) => {
           console.log('Deep link auth error:', err);
         });
       }

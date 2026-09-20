@@ -44,6 +44,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({ navigation }) => {
 
   const filteredJourneys = journeys
     .filter(j => j.userId !== currentUser?.id)
+    // PRIVACY: hide active/in-progress journeys from public discovery
+    .filter(j => j.status !== 'active' && (j.status as string) !== 'in_progress')
     .filter(j => {
       if (selectedType && j.cooperationType !== selectedType) {
         return false;

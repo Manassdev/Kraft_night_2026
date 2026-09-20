@@ -123,8 +123,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         <View style={[styles.coopScoreCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
           <View style={[styles.scoreCircle, { backgroundColor: isDark ? '#0A2B23' : '#E6F7F4', borderColor: theme.primary }]}>
             <Text style={[styles.scoreNumber, { color: theme.primary }]}>{user.trustScore}</Text>
+            <Text style={[styles.scoreDenom, { color: theme.primary }]}>/100</Text>
           </View>
           <Text style={[styles.scoreLabel, { color: theme.primary }]}>Cooperation Score</Text>
+          <Text style={[styles.scoreDesc, { color: theme.textSecondary }]}>
+            {user.trustScore >= 90 ? '🌟 Excellent cooperator' : user.trustScore >= 70 ? '👍 Good cooperator' : '📈 Building trust'}
+          </Text>
         </View>
 
         {/* 3 Stats Row matching Reference Screen 19 */}
@@ -358,6 +362,16 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeights.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  scoreDenom: {
+    fontSize: Typography.fontSizes.xs,
+    fontWeight: '600',
+    opacity: 0.7,
+  },
+  scoreDesc: {
+    fontSize: Typography.fontSizes.xs,
+    marginTop: 4,
   },
   statsRow: {
     flexDirection: 'row',

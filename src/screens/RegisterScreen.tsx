@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { sendMagicLink } from '../services/auth';
+import { sendOtp } from '../services/auth';
 import { useTheme } from '../theme/ThemeContext';
 import { Typography } from '../theme/theme';
 
@@ -31,6 +31,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   const [email, setEmail] = useState('');
  const [phone, setPhone] = useState('');
   const [gender, setGender] = useState<GenderOption>('Male');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [agreedGuidelines, setAgreedGuidelines] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,6 +54,18 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
     return;
   }
 
+  // Password validation (only if user entered a password)
+  if (password) {
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+  }
+
   if (!agreedGuidelines) {
     setError('Please agree to the community guidelines to proceed');
     return;
@@ -60,28 +75,53 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   setError('');
 
   try {
-    await sendMagicLink(
-      email.trim(),
-      name.trim(),
-      phone.trim(),
-      gender === 'Prefer not to say' ? 'Other' : gender,
-    );
-
-    Alert.alert(
-      'Check your email',
-      `We sent a verification link to ${email.trim()}. Open the link to continue.`,
-      [
-        {
-          text: 'OK',
-          onPress: () =>
-            navigation.navigate('Login', {
-              email: email.trim(),
-            }),
+    if (password) {
+      // Password sign-up via Supabase Auth
+      const { supabase } = require('../services/supabase');
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            name: name.trim(),
+            phone: phone.trim(),
+            gender: gender === 'Prefer not to say' ? 'Other' : gender,
+          },
         },
-      ],
-    );
+      });
+
+      if (signUpError) throw signUpError;
+
+      Alert.alert(
+        'Account created!',
+        `Welcome to CoJourney, ${name.trim()}! You can now log in with your email and password.`,
+        [{ text: 'Go to Login', onPress: () => navigation.navigate('Login') }]
+      );
+    } else {
+      // Fallback: OTP / magic link
+      await sendOtp(
+        email.trim(),
+        name.trim(),
+        phone.trim(),
+        gender === 'Prefer not to say' ? 'Other' : gender,
+      );
+
+      Alert.alert(
+        'Check your email',
+        `We sent a verification link to ${email.trim()}. Open the link to continue.`,
+        [
+          {
+            text: 'OK',
+            onPress: () =>
+              navigation.navigate('Login', {
+                email: email.trim(),
+              }),
+          },
+        ],
+      );
+    }
   } catch (err: unknown) {
-    setError(err instanceof Error ? err.message : 'Unable to send verification email.');
+    setError(err instanceof Error ? err.message : 'Unable to create account. Please try again.');
   } finally {
     setLoading(false);
   }
@@ -133,23 +173,46 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
             keyboardType="email-address"
           />
 
-         <Input
-  label="Phone"
-  placeholder="+91 9876543210"
-  value={phone}
-  onChangeText={setPhone}
-  keyboardType="phone-pad"
-/>
+          <Input
+            label="Phone"
+            placeholder="+91 9876543210"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
 
-<Text
-  style={{
-    color: theme.textSecondary,
-    fontSize: Typography.fontSizes.sm,
-    marginBottom: 16,
-  }}>
-  We'll send a secure verification link to your email.
-</Text>
-          
+          {/* Password (optional — leave blank to use Magic Link instead) */}
+          <Input
+            label="Password (optional)"
+            leftIcon="🔒"
+            rightIcon={showPassword ? '👁️' : '👁️‍🗨️'}
+            onRightIconPress={() => setShowPassword(v => !v)}
+            placeholder="Min. 6 characters"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+
+          {password.length > 0 && (
+            <Input
+              label="Confirm Password"
+              leftIcon="🔒"
+              placeholder="Re-enter password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showPassword}
+            />
+          )}
+
+          <Text
+            style={{
+              color: theme.textSecondary,
+              fontSize: Typography.fontSizes.xs,
+              marginBottom: 16,
+              lineHeight: 18,
+            }}>
+            {password ? '🔒 Account will be created with a password.' : '✉️ Leave password blank to sign up via Magic Link email.'}
+          </Text>
 
           {/* Gender Selector with Radio Buttons */}
           <View style={styles.genderSection}>
@@ -209,7 +272,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 
           {/* Create Account CTA */}
           <Button
-            title={loading ? 'Sending Link...' : 'Verify Email'}
+            title={loading ? (password ? 'Creating account...' : 'Sending Link...') : (password ? 'Create Account' : 'Verify Email')}
             onPress={handleRegister}
             variant="primary"
             size="large"
